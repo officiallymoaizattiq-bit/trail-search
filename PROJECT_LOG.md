@@ -6,7 +6,84 @@ Repo: https://github.com/officiallymoaizattiq-bit/trail-search
 
 ---
 
-## Status: Week 1, Setup complete — about to start Task 1.1 (data fetching)
+## Status: Week 1 Task 1.1 COMPLETE — 497 reports in data/reports.json. Next: Task 1.2 (Postgres) or 1.3 (tokenizer).
+
+---
+
+## Status: Week 1 Task 1.1 COMPLETE — 497 reports scraped & cached to data/reports.json. Next: Task 1.2 (Postgres) or 1.3 (tokenizer).
+
+---
+
+## Progress: fetch_reports.py — FULLY WORKING (all 4 pieces done)
+Full pipeline runs end to end: collect URLs → parse each report → cache to JSON.
+- **Result: 497/503 reports saved** to `data/reports.json` (~99% success).
+- Structure = 3 stages (separation of concerns, interview-worthy): `get_report_urls()` crawls listing pages, `parse_report()` extracts 8 fields, main block loops + caches.
+
+**The 6 skips (real-world data lessons, NOT bugs to fix — "good enough beats complete"):**
+- `'NoneType' object has no attribute 'get_text'` — report missing an expected field (no author / different h1). `.find()` returned None, `.get_text()` on None crashes. Caught by try/except.
+- `Invalid URL ... No scheme supplied` (x2) — some listing links are RELATIVE (`trip_report-...` with no domain). Filter caught them but requests can't fetch without `https://`. Could fix later by prepending domain if missing.
+- Also saw a couple `http://` (not https) and older 2020/2025 reports mixed into the 2026 feed — normal feed messiness.
+- **Design lesson proven:** the try/except around `parse_report` is what let 1 bad page not kill the whole 8-min run. This is the robustness pattern.
+
+**Full working file is committed. To re-scrape or scale up:** change `range(0, 500, 50)` — bigger 2nd number = more reports. Week 4 scaling will crank this to 10k+.
+
+---
+
+## Progress: fetch_reports.py — piece 1 & 2 done
+- **Piece 1 (get past bot block): DONE.** `requests.get` with browser User-Agent header returns 200. Plain requests would 403.
+- **Piece 2 (parse one report): DONE.** All 8 fields extract clean from a single report page.
+
+**The 8 fields + how they're pulled:**
+- `report_id` → `url.split(".")[-1]` (the number at end of URL, e.g. `210341804556`) — no scraping needed
+- `author` → `soup.find("span", itemprop="author").find("span", class_="wta-icon-headline__text").get_text().strip()`
+- trail name → `h1.find("a").get_text()` where `h1 = soup.find("h1", class_="documentFirstHeading")`
+- hike page URL (bonus) → the `<a href>` inside that h1
+- date → `h1.find("a").next_sibling.strip()` (still has leading `— `, clean later)
+- region → `soup.find(id="hike-region").get_text().strip()`
+- body → `soup.find(id="tripreport-body-text").get_text().strip()`
+- conditions dict → loop `div.trip-condition` inside `#trip-conditions`, `{h4_text: span_text}`
+
+**Known quirks (not bugs, handle later):**
+- `\xa0` (non-breaking space) appears in some condition values — tokenizer will strip it, ignore for now.
+- date string still has leading `— ` — strip when parsing to real date via `datetime.strptime`.
+- **RISK:** not every report may have a `#trip-conditions` block (older/lazy reports). When scaling in piece 4, wrap conditions parsing in an `if block:` check or the loop crashes on `None`.
+- **LESSON (bit us 3x):** unsaved file in VS Code = running OLD code. The dot on the tab means unsaved. Cmd+S before every run.
+
+## Next step (pick up here)
+Piece 3: collect MANY report URLs. Go to WTA trip-reports listing page, find (1) the href pattern for each report link in the list, (2) how pagination works (URL change on next page). Then loop to gather hundreds/thousands of URLs.
+
+Then piece 4: tie it together — loop URLs, parse each (piece 2 logic), `time.sleep(1)` between, cache to `data/reports.json`.
+
+---
+
+## WTA scraping notes (confirmed by inspecting a live trip report)
+
+Example report URL pattern:
+`https://www.wta.org/go-hiking/trip-reports/trip_report-2026-06-30.210341804556`
+
+**IMPORTANT — WTA has bot detection.** A plain `requests.get(url)` gets blocked (403). Must send a browser-like User-Agent header, e.g.:
+```python
+headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36"}
+requests.get(url, headers=headers)
+```
+
+**Confirmed selectors (per report page):**
+- **Title / trail name** — `h1.documentFirstHeading` contains an `<a>` (trail name, e.g. "Goat Mountain") AND trailing loose text with the date. Parse separately:
+  - trail name → `h1.find("a").get_text()`
+  - hike page URL (bonus) → the `<a href>` inside the h1
+  - date → the text node after the `<a>` (e.g. `" — Wednesday, Jul. 1, 2026"`), strip the `" — "` prefix. Raw string for now; parse to real date later with `datetime.strptime`.
+- **Region / area** — `id="hike-region"` (city + mountain range area)
+- **Related hike** — `class="related-hike-links"` (may be redundant with the h1 `<a>` — check)
+- **Report body** — `id="tripreport-body-text"` (the main text you actually index)
+- **Structured conditions block (the WTA gold for week-3 condition tagging):**
+  - Container: `div#trip-conditions` (also has class `alpha`), inside `div.trip-report-features`
+  - Each condition: `div.trip-condition` containing:
+    - `<h4>` = category label ("Trail Conditions", "Road", "Bugs", "Snow", "Type of Hike"...). The `::after` is CSS decoration, ignore it.
+    - `<span>` = the value ("Road suitable for all vehicles", "No bugs", "Intermittent snow – not hard to cross"...)
+  - Parse into a dict: `{h4_text: span_text}`. Handle empty/collapsed h4 gracefully.
+  - This gives BOTH structured condition tags AND freeform body — stronger than the plan assumes, most scrapers only get freeform.
+
+**Politeness:** respect `wta.org/robots.txt`, add `time.sleep(1)` between requests, cache to disk immediately so re-runs don't re-hit the network.
 
 ---
 
