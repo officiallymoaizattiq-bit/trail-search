@@ -6,7 +6,7 @@ Repo: https://github.com/officiallymoaizattiq-bit/trail-search
 
 ---
 
-## Status: Week 1 Task 1.3 COMPLETE — tokenizer built. Next: Task 1.4 (inverted index, THE HEART).
+## Status: WEEK 1 COMPLETE ✓ — instant word-match over 497 real reports. Next: WEEK 2 (BM25 ranking).
 
 ---
 
@@ -19,6 +19,42 @@ Repo: https://github.com/officiallymoaizattiq-bit/trail-search
 ---
 
 ## Status: Week 1 Task 1.3 COMPLETE — tokenizer built by hand. Next: Task 1.4 (inverted index — THE HEART).
+
+---
+
+## Status: WEEK 1 COMPLETE ✓ (all 5 tasks). Engine does instant word-matching over 497 real reports. Next: WEEK 2 — BM25 ranking (the meat).
+
+---
+
+## Progress: Task 1.4 — Inverted Index DONE (THE HEART)
+`src/index.py` — `build_index(documents)` returns `(index, doc_len)`:
+```python
+from collections import defaultdict, Counter
+from src.tokenizer import tokenize   # note: src. prefix needed when run from project root
+
+def build_index(documents):
+    index = defaultdict(dict)   # word -> {doc_id: count}
+    doc_len = {}                # doc_id -> total word count (for week-2 ranking)
+    for doc in documents:
+        words = tokenize(doc["trail_name"] + " " + doc["body"])
+        doc_len[doc["id"]] = len(words)
+        for word, count in Counter(words).items():
+            index[word][doc["id"]] = count
+    return index, doc_len
+```
+- **Inverted = word→documents** (normal is doc→words). Flip it once, ahead of time, so search is a lookup not a scan.
+- `Counter(words)` counts word frequencies in one step. `defaultdict(dict)` auto-creates empty dict for new words (no KeyError).
+- Built over real data: **7,125 unique words**, snow in 125 reports, creek in 118. Retrieved instantly via `index.get('snow')`.
+
+## Progress: Task 1.5 — Proved it works DONE (the payoff)
+Built `build_test.py` (project root) that: pulls all rows from postgres, reshapes to dicts, builds index, then RACES slow-scan vs index-lookup.
+- **Result: index is 12,265x faster** (11.70ms scan vs ~0.00ms lookup), both find the same 125 reports.
+- **The core lesson (unfakeable):** scan is LINEAR (2x data = 2x time → unusable at 30k). Index lookup is CONSTANT time (dict lookup doesn't care about total size). This is why every search engine pre-builds an index.
+
+## Note on imports
+`build_test.py` at project root imports `from src.tokenizer import tokenize` and `from src.index import build_index`. Because of this, `src/index.py` uses `from src.tokenizer import tokenize` (with `src.` prefix). Run everything from the project root dir.
+
+**WEEK 1 SHIPPABLE MET:** type a word → instantly get every matching report out of 497 real ones, via hand-built index. No ranking yet (that's week 2). ✓
 
 ---
 
