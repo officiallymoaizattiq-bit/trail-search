@@ -6,7 +6,7 @@ Repo: https://github.com/officiallymoaizattiq-bit/trail-search
 
 ---
 
-## Status: Week 1 Task 1.2 COMPLETE — 497 reports in PostgreSQL. Next: Task 1.3 (tokenizer, first by-hand piece).
+## Status: Week 1 Task 1.3 COMPLETE — tokenizer built. Next: Task 1.4 (inverted index, THE HEART).
 
 ---
 
@@ -15,6 +15,30 @@ Repo: https://github.com/officiallymoaizattiq-bit/trail-search
 ---
 
 ## Status: Week 1 Task 1.2 COMPLETE — 497 reports loaded into PostgreSQL. Next: Task 1.3 (tokenizer — first "by hand" piece).
+
+---
+
+## Status: Week 1 Task 1.3 COMPLETE — tokenizer built by hand. Next: Task 1.4 (inverted index — THE HEART).
+
+---
+
+## Progress: Task 1.3 — Tokenizer DONE (first by-hand engine piece)
+`src/tokenizer.py` — turns raw text into clean comparable words. ~5 lines:
+```python
+import re
+STOPWORDS = {"the", "a", "an", "and", "of", "to", "in", "on", "is", "it"}
+def tokenize(text):
+    text = text.lower()                              # 1. lowercase so Snow==snow
+    words = re.findall(r"[a-z0-9]+", text)           # 2. split on non-letter/number (kills punctuation)
+    return [w for w in words if w not in STOPWORDS]  # 3. drop junk stopwords
+```
+Tested: `"Snow on the PASS! Creek-crossing was DEEP, deep."` → `['snow','pass','creek','crossing','was','deep','deep']`. Correct — dupes preserved (counts matter for ranking).
+
+**Concepts learned:**
+- **Bug avoided:** never `.remove()` from a list while looping it — the list shifts and the loop skips elements. Use a list comprehension instead.
+- **List comprehension** `[w for w in words if w not in STOPWORDS]` = build a fresh filtered list, no mutation. Common python pattern.
+- Stopword list is intentionally tiny (10 words) for now — expand later IF junk clogs results. Learning *when* to expand (from bad results) beats copying a huge list upfront.
+- `tokenizer.py` is a clean importable module — no test prints left in it.
 
 ---
 
