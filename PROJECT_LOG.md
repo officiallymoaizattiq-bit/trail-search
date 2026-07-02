@@ -8,6 +8,8 @@ Repo: https://github.com/officiallymoaizattiq-bit/trail-search
 
 ## Status: WEEK 1 COMPLETE ✓ — instant word-match over 497 real reports. Next: WEEK 2 (BM25 ranking).
 
+> Two reference docs generated end of Week 1: `CONTEXT_HANDOFF.md` (full project brain-dump for resuming in a new chat) and `Trail_Search_Code_Explained.pdf` (22-page line-by-line code walkthrough in 12-year-old language with diagrams).
+
 ---
 
 ## Status: Week 1 Task 1.1 COMPLETE — 497 reports scraped & cached to data/reports.json. Next: Task 1.2 (Postgres) or 1.3 (tokenizer).
