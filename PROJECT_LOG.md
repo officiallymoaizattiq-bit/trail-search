@@ -6,11 +6,41 @@ Repo: https://github.com/officiallymoaizattiq-bit/trail-search
 
 ---
 
-## Status: Week 1 Task 1.1 COMPLETE — 497 reports in data/reports.json. Next: Task 1.2 (Postgres) or 1.3 (tokenizer).
+## Status: Week 1 Task 1.2 COMPLETE — 497 reports in PostgreSQL. Next: Task 1.3 (tokenizer, first by-hand piece).
 
 ---
 
 ## Status: Week 1 Task 1.1 COMPLETE — 497 reports scraped & cached to data/reports.json. Next: Task 1.2 (Postgres) or 1.3 (tokenizer).
+
+---
+
+## Status: Week 1 Task 1.2 COMPLETE — 497 reports loaded into PostgreSQL. Next: Task 1.3 (tokenizer — first "by hand" piece).
+
+---
+
+## Progress: Task 1.2 — PostgreSQL DONE
+- Installed `postgresql@16` via brew, started as a service (`brew services start postgresql@16`). `createdb`/`psql` already on PATH via `/opt/homebrew/bin`.
+- Created database `trailsearch`.
+- Created `documents` table:
+  ```sql
+  CREATE TABLE documents (
+      id TEXT PRIMARY KEY,
+      trail_name TEXT, date TEXT, region TEXT, author TEXT,
+      body TEXT, url TEXT,
+      conditions JSONB          -- dict stored as queryable json, not flat text
+  );
+  ```
+- Installed driver: `pip install "psycopg[binary]"`.
+- Wrote `scripts/load_db.py`: reads `data/reports.json`, inserts each report as a row. **497 rows loaded & committed, verified with `SELECT COUNT(*)`.**
+
+**SQL/db concepts learned (interview-worthy):**
+- `%s` placeholders + separate values tuple → prevents SQL injection. NEVER f-string values into SQL.
+- `ON CONFLICT (id) DO NOTHING` → idempotent inserts, script is safe to re-run (won't duplicate on the primary key).
+- `conn.commit()` is required — postgres doesn't persist inserts until committed.
+- `json.dumps(conditions)` to store the dict into the JSONB column.
+- psql: backslash commands (`\dt` list tables, `\q` quit); SQL statements end with `;`.
+
+**Handy verify commands:** `psql trailsearch` then `SELECT COUNT(*) FROM documents;` / `SELECT id, trail_name, region FROM documents LIMIT 10;`
 
 ---
 
