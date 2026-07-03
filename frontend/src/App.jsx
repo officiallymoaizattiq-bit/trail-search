@@ -1,6 +1,8 @@
 import { useState } from "react";
 import "./App.css";
 
+const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
 function App() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
@@ -13,7 +15,7 @@ function App() {
     setSearched(true);
     try {
       const res = await fetch(
-        `http://localhost:8000/search?q=${encodeURIComponent(query)}`
+        `${API}/search?q=${encodeURIComponent(query)}`
       );
       const data = await res.json();
       setResults(data.results || []);
