@@ -6,7 +6,15 @@ Repo: https://github.com/officiallymoaizattiq-bit/trail-search
 
 ---
 
-## Status: WEEK 2 IN PROGRESS — BM25 ranking WORKING (tasks 2.1–2.3 done). Next: task 2.4 (stemming).
+## Status: WEEK 2 COMPLETE ✓ — BM25 ranking + stemming done. Real ranked search over 391 diverse reports. Next: WEEK 3 (website + condition tagging + deploy).
+
+> **Task 2.4 stemming DONE.** Added `stem(word)` to `src/tokenizer.py` — rough suffix stripper (chops -ing/-ed/-es/-s, guard: only if ≥3 chars remain). Wired into `tokenize` via `[stem(w) for w in words if w not in STOPWORDS]`, so it runs on BOTH indexing and querying automatically (that's what makes matching work — "hiking" in a report and "hike" in a query both reduce to same root). Verified: `stem("hiking")==stem("hikes")==stem("hiked")`.
+> - **Measured impact:** index 6204 → 5269 unique words (~935 variants collapsed). "wildflower" went from 4 docs (idf 4.467) to 21 docs (idf 2.903) — "wildflower"+"wildflowers" merged, 17 previously-invisible reports now match. Search relevance held (Entiat River / High Divide still top for "river crossing high snow"). This is the recall win, concretely.
+> - **Rough by design** (per build plan — don't chase linguistic perfection): does dumb things sometimes ("business"→"busine"), doesn't matter. "pass"→"pas" etc. Fine.
+> - **Sanity tests updated** to stemmed expectations + a new stemming-specific test block. All pass.
+> - **WEEK 2 SHIPPABLE MET:** type a real query → genuinely good reports ranked best-first, hand-built BM25 + stemming.
+
+
 
 > **Week 2 progress (BM25 ranking, `src/ranker.py`):**
 > - **2.1 IDF DONE.** `idf(word, index, total_docs)` — `math.log(1 + (total_docs - n + 0.5)/(n + 0.5))`, n = docs containing word. Verified on real data: trail=0.211 (in 317 docs, common→low), snow=1.332 (103 docs), wildflower=4.467 (4 docs, rare→high). Rare words score way higher. (Seasonal corpus fix paid off — wildflower only has a meaningful IDF because we scraped summer.)
