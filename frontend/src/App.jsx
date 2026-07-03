@@ -1,4 +1,5 @@
 import { useState } from "react";
+import "./App.css";
 
 function App() {
   const [query, setQuery] = useState("");
@@ -22,46 +23,96 @@ function App() {
     setLoading(false);
   }
 
+  // render-only derived values (does not touch state flow)
+  const maxScore = results[0]?.score || 1;
+
   return (
-    <div style={{ maxWidth: 700, margin: "40px auto", padding: "0 20px", fontFamily: "system-ui, sans-serif" }}>
-      <h1 style={{ color: "#1b5e3f" }}>Trail Report Search</h1>
-      <p style={{ color: "#666" }}>Search real hiking trip reports by trail conditions.</p>
+    <div className="station">
+      <main className="frame">
+        <header className="masthead">
+          <p className="eyebrow">WTA TRIP REPORTS · FIELD JOURNAL</p>
+          <h1 className="title">Trail Report Search</h1>
+          <p className="lede">
+            Real hiking trip reports, read by trail conditions — snow, water,
+            bugs, bloom. Ranked by relevance.
+          </p>
+        </header>
 
-      <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && runSearch()}
-          placeholder="try: snow on the pass"
-          style={{ flex: 1, padding: "10px 12px", fontSize: 16, border: "1px solid #ccc", borderRadius: 6 }}
-        />
-        <button
-          onClick={runSearch}
-          style={{ padding: "10px 20px", fontSize: 16, background: "#1b5e3f", color: "white", border: "none", borderRadius: 6, cursor: "pointer" }}
-        >
-          Search
-        </button>
-      </div>
+        <section className="console">
+          <label className="field-label" htmlFor="q">
+            Enter conditions
+          </label>
+          <div className="field">
+            <input
+              id="q"
+              className="field-input"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && runSearch()}
+              placeholder="snow on the pass"
+              autoComplete="off"
+              spellCheck="false"
+            />
+            <button className="field-go" onClick={runSearch}>
+              Search
+            </button>
+          </div>
+        </section>
 
-      {loading && <p style={{ marginTop: 20 }}>searching...</p>}
-      {!loading && searched && results.length === 0 && (
-        <p style={{ marginTop: 20, color: "#999" }}>no results found</p>
-      )}
+        <section className="results" aria-live="polite" aria-busy={loading}>
+          {loading &&
+            [0, 1, 2, 3, 4].map((n) => (
+              <div className="skel-row" key={`skel-${n}`} aria-hidden="true">
+                <div className="skel-rank" />
+                <div className="skel-body">
+                  <div className="skel-line" />
+                  <div className="skel-line skel-line-sm" />
+                </div>
+                <div className="skel-signal" />
+              </div>
+            ))}
 
-      <div style={{ marginTop: 20 }}>
-        {results.map((r) => (
-          <a
-            key={r.id}
-            href={r.url}
-            target="_blank"
-            rel="noreferrer"
-            style={{ display: "block", padding: "14px 16px", marginBottom: 10, border: "1px solid #e0e0e0", borderRadius: 8, textDecoration: "none", color: "inherit" }}
-          >
-            <div style={{ fontWeight: 600, color: "#1b5e3f" }}>{r.trail_name}</div>
-            <div style={{ fontSize: 13, color: "#888" }}>{r.region}</div>
-          </a>
-        ))}
-      </div>
+          {!loading && searched && results.length === 0 && (
+            <p className="status-empty">
+              no entries — try a broader condition: snow, water, bugs
+            </p>
+          )}
+
+          {!loading &&
+            results.map((r, i) => {
+              const rel = r.score / maxScore;
+              const pct = Math.round(rel * 100);
+              return (
+                <a
+                  className="entry"
+                  key={r.id}
+                  href={r.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ "--i": i }}
+                  aria-label={`${r.trail_name}, ${r.region} — opens WTA trip report`}
+                >
+                  <span className="rank">{String(i + 1).padStart(2, "0")}</span>
+
+                  <span className="entry-info">
+                    <span className="entry-name">{r.trail_name}</span>
+                    <span className="entry-meta">
+                      <span className="meta-pin" aria-hidden="true">◇</span>
+                      <span className="region">{r.region}</span>
+                    </span>
+                  </span>
+
+                  <span className="entry-score">
+                    <span className="score-label">{pct}% match</span>
+                    <span className="score-track" aria-hidden="true">
+                      <span className="score-fill" style={{ width: `${pct}%` }} />
+                    </span>
+                  </span>
+                </a>
+              );
+            })}
+        </section>
+      </main>
     </div>
   );
 }
