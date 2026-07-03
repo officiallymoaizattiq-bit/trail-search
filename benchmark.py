@@ -1,3 +1,4 @@
+import os
 import time
 import psycopg
 from src.engine import SearchEngine
@@ -7,7 +8,7 @@ print("building your engine...")
 mine = SearchEngine()
 
 # --- postgres connection for its full-text search ---
-conn = psycopg.connect("dbname=trailsearch")
+conn = psycopg.connect(os.environ.get("DATABASE_URL", "dbname=trailsearch"))
 
 def postgres_search(query, limit=5):
     # turn "snow on the pass" into "snow & on & the & pass" for to_tsquery

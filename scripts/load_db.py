@@ -1,4 +1,5 @@
 import json
+import os
 import psycopg
 
 # load the scraped reports back off disk
@@ -8,7 +9,7 @@ with open("data/reports.json") as f:
 print(f"loaded {len(reports)} reports from json")
 
 # connect to the postgres database
-conn = psycopg.connect("dbname=trailsearch")
+conn = psycopg.connect(os.environ.get("DATABASE_URL", "dbname=trailsearch"))
 cur = conn.cursor()
 
 # insert every report as a row

@@ -6,7 +6,23 @@ Repo: https://github.com/officiallymoaizattiq-bit/trail-search
 
 ---
 
-## Status: WEEK 3 IN PROGRESS — FULL-STACK SEARCH WORKING ✓ (React → FastAPI → engine → Postgres). Next: index persistence (3.1), condition tagging (3.4), Postgres benchmark (3.5), deploy.
+## Status: WEEK 3 — nearly done. Full-stack search + index persistence + condition-search + Postgres benchmark all WORKING. Next: DEPLOY (last big piece).
+
+> **Week 3 progress (tasks 3.1, 3.4, 3.5 all DONE):**
+>
+> **3.1 index persistence DONE.** `src/engine.py` now has `build_and_save_index()` (pickles `{documents, index, doc_len, avg_len}` to `data/index.pkl`) and `SearchEngine.__init__` loads the pickle if it exists, else builds fresh + saves. Separates INDEXING time (slow, offline, once) from QUERY time (fast, live, boot just loads a file). Measured: at 388 docs, pickle-load (0.114s) vs db-rebuild (0.108s) — basically identical. Honest finding: too small to show the benefit YET; the pattern pays off at scale (rebuild grows with corpus, load doesn't). **Interview answer: "separated indexing from query time, measured it, kept it because it's right for scale even though my corpus is too small to show it."** KNOWN DEBT: index is now STALE after data changes — must re-run `build_and_save_index()` or delete `data/index.pkl` + restart server. (Bit us immediately when adding conditions — had to rebuild pickle.)
+>
+> **3.4 condition search DONE (THE HIKING EDGE).** All 388 reports have 5 condition categories fully populated (Bugs, Road, Snow, Type of Hike, Trail Conditions) with rich human phrases ("Snow free", "Avalanche danger", "Trees down across trail", "Road impassable/closed"). Two edits: `load_documents` now SELECTs `conditions`; `build_index` folds condition values into the tokenized text (`cond_text = " ".join(str(v) for v in (doc.get("conditions") or {}).values())`). Now searching a CONDITION TAG works: "avalanche danger" → Mazama Ridge (10.38), Artist Point Snowshoe — reports where that's the tagged Snow condition, invisible before. Verified through the live website UI (avalanche danger / no bugs / road closed all return right trails). All tests still pass (sanity 4/4, relevance 4/4). This is what makes it more than "another search box." Skipped structured-filter checkboxes (part 2) as lowest-value — condition SEARCH already delivers the edge.
+>
+> **3.5 Postgres benchmark DONE (`benchmark.py`) — THE INTERVIEW MOVE.** Set up Postgres FTS on same table: `search_vector tsvector` column (`to_tsvector('english', trail_name || body)`), GIN index, `ts_rank`. Ran 4 queries head-to-head. **Findings (the interview script):**
+>   1. **Speed: MY engine WON at this scale.** "snow on the pass": mine 0.21ms vs Postgres 7.54ms (35x). Because my index is in RAM (pickle) vs Postgres hitting GIN on disk + query parsing. Nuanced truth: at 10M docs Postgres wins (doesn't load all to RAM); at 388 in-memory beats it. Defensible, scale-aware answer.
+>   2. **THE money shot — recall on "avalanche danger": mine 5 results, Postgres only 2.** Postgres only indexed trail_name+body; I folded in condition tags. I beat the industry-standard tool on recall because I understood the domain and indexed the structured condition data it can't see.
+>   3. **Ranking differs, explainable:** BM25 (mine) weights rare terms + penalizes long docs; Postgres `ts_rank` mostly counts frequency, no real IDF/length-norm. Different top results, and I can say why.
+>   4. **Postgres has a dedup quirk** (returned "Melakwa Lake" twice); mine doesn't.
+>
+> **NEXT — DEPLOY (last big Week 3 piece):** get it live on a real URL (Fly.io / Railway per plan). Note for deploy: `main.py` builds `SearchEngine()` on boot which needs either the pickle present OR Postgres reachable to build fresh. `data/` is gitignored so the pickle won't be in the repo — deploy must either build the pickle on the box or ship it separately. Also tighten CORS `allow_origins` from `["*"]` to the real frontend domain in prod.
+
+
 
 > **Week 3 progress — the website is LIVE (locally):**
 > - **Refactor DONE.** Pulled search logic out of `build_test.py` into `src/engine.py` — a `SearchEngine` class that loads docs from Postgres, builds the index ONCE in `__init__`, exposes `search(query, limit)` returning clean dicts (trail_name, region, url, score). This is the importable module the web server needed.
