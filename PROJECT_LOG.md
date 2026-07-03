@@ -6,9 +6,15 @@ Repo: https://github.com/officiallymoaizattiq-bit/trail-search
 
 ---
 
-## Status: WEEK 1 COMPLETE ✓ — instant word-match over 497 real reports. Next: WEEK 2 (BM25 ranking).
+## Status: WEEK 1 COMPLETE + pre-Week-2 hardening DONE ✓ — corpus fixed (seasonal spread), sanity tests passing. Ready for WEEK 2 (BM25 ranking).
 
-> Two reference docs generated end of Week 1: `CONTEXT_HANDOFF.md` (full project brain-dump for resuming in a new chat) and `Trail_Search_Code_Explained.pdf` (22-page line-by-line code walkthrough in 12-year-old language with diagrams).
+> Pre-Week-2 fixes applied (addressing the senior review in CONTEXT_HANDOFF.md section 10):
+> - **Corpus skew FIXED.** Re-scraped ~391 reports across 4 seasonal date windows (winter/spring/summer/fall) using WTA's `tripdate_min`/`tripdate_max` URL filters (format `YYYY-MM-DD` on the `@@search_tripreport_listing` endpoint). Verified diversity: `snowshoe` in 20 reports, `wildflower` in 21 — winter AND summer vocab both present, so IDF will now reflect real rarity, not seasonal coincidence. (NOTE: deep pagination `b_start` offsets DON'T work — WTA clamps them back to recent; date filters are the real diversity lever.)
+> - **id parsing FIXED.** `report_id = re.search(r"(\d+)$", url).group(1)` — handles both dot-format (new) and dash-format (old) URLs; also robust to dots earlier in the URL. Old `url.split(".")[-1]` was fragile.
+> - **Sanity tests ADDED.** `test_sanity.py` (project root) — asserts tokenizer + build_index produce hand-computed answers over 3 toy docs. Run `python test_sanity.py` before/after Week 2 changes. This is the safety net for BM25 math (wrong-but-plausible scores).
+> - **Known debt (deferred, fine):** a few reports have a date field that's just `,` (different h1 layout, next_sibling grabbed wrong node). Harmless until Week 3 date filtering. Don't fix now.
+
+
 
 ---
 
