@@ -6,7 +6,16 @@ Repo: https://github.com/officiallymoaizattiq-bit/trail-search
 
 ---
 
-## Status: WEEK 1 COMPLETE + pre-Week-2 hardening DONE ✓ — corpus fixed (seasonal spread), sanity tests passing. Ready for WEEK 2 (BM25 ranking).
+## Status: WEEK 2 IN PROGRESS — BM25 ranking WORKING (tasks 2.1–2.3 done). Next: task 2.4 (stemming).
+
+> **Week 2 progress (BM25 ranking, `src/ranker.py`):**
+> - **2.1 IDF DONE.** `idf(word, index, total_docs)` — `math.log(1 + (total_docs - n + 0.5)/(n + 0.5))`, n = docs containing word. Verified on real data: trail=0.211 (in 317 docs, common→low), snow=1.332 (103 docs), wildflower=4.467 (4 docs, rare→high). Rare words score way higher. (Seasonal corpus fix paid off — wildflower only has a meaningful IDF because we scraped summer.)
+> - **helper: `avg_doc_len(doc_len)`** — mean of doc_len.values(), guards empty. Needed for the length penalty.
+> - **2.2 BM25 scorer DONE.** `bm25_search(query, index, doc_len, avg_len, total_docs, k1=1.5, b=0.75)`. Tokenizes query, loops ONLY docs containing each word (via inverted index), scores `word_idf * (tf*(k1+1)) / (tf + k1*norm)` where `norm = 1 - b + b*(doc_len/avg_len)`, sums per-word scores per doc, returns sorted best-first. Tested on "river crossing high snow" → top results are genuinely river/snow/high-elevation trails (High Divide, Entiat River, Middle Fork Snoqualmie). Scores descend cleanly, sane range. Matching became real ranking.
+> - **2.3 knob tuning DONE (watched them move).** `b` (length penalty): b=0 → long verbose docs dominate (scores spread 5.4–8.1), b=1 → short focused docs win (compressed 5.1–6.1), b=0.75 = balance. `k1` (mention saturation): k1=0.5 → repetition barely matters (scores squished 4.6–5.5), k1=5 → repetition dominates, spammy docs climb (Entiat River → 8.3). k1=1.5 = diminishing returns middle. **Both reset to defaults (k1=1.5, b=0.75) after testing.** Can now defend "why 0.75/1.5" from having SEEN it, not from a paper.
+> - **NOTE:** BM25 testing code is bolted onto the bottom of `build_test.py` (imports idf, avg_doc_len, bm25_search). Fine for now; will move to a real search function for Week 3's FastAPI.
+
+
 
 > Pre-Week-2 fixes applied (addressing the senior review in CONTEXT_HANDOFF.md section 10):
 > - **Corpus skew FIXED.** Re-scraped ~391 reports across 4 seasonal date windows (winter/spring/summer/fall) using WTA's `tripdate_min`/`tripdate_max` URL filters (format `YYYY-MM-DD` on the `@@search_tripreport_listing` endpoint). Verified diversity: `snowshoe` in 20 reports, `wildflower` in 21 — winter AND summer vocab both present, so IDF will now reflect real rarity, not seasonal coincidence. (NOTE: deep pagination `b_start` offsets DON'T work — WTA clamps them back to recent; date filters are the real diversity lever.)

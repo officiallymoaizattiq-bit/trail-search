@@ -183,21 +183,54 @@ Clean, honest commit history documenting the build week by week:
 
 ---
 
-## 9. Exactly where to pick up: WEEK 2 — BM25 RANKING ("the meat")
+## 9. Where to pick up: WEEK 2 — BM25 RANKING (IN PROGRESS, next = stemming)
 
-Right now search returns matches in no particular order. Week 2 makes the BEST match rank first, using **BM25** — the same ranking math real search engines use. It's three common-sense ideas turned into arithmetic:
-1. **More mentions = higher score** — but with diminishing returns (10 mentions isn't 10× better than 1). Tuning knob `k1` (~1.5).
-2. **Rare words count more** — matching "postholing" means more than matching "trail". This is **IDF** (inverse document frequency).
-3. **Short focused docs beat long ramblers** — a tight snow report beats a 5,000-word essay that says "snow" once. Tuning knob `b` (~0.75), using `docLen / avgLen`.
+BM25 is three common-sense ideas as arithmetic: (1) more mentions = higher, diminishing returns, knob `k1`~1.5; (2) rare words count more = IDF; (3) short focused docs beat long ramblers, knob `b`~0.75 via docLen/avgLen.
 
-Formula per query word (summed over all query words):
+Per-word score, summed over query words:
 ```
 score(word, doc) = IDF(word) * ( tf * (k1 + 1) ) / ( tf + k1 * (1 - b + b * docLen/avgLen) )
 ```
-where `tf` = how many times the word appears in that doc (already stored in the index from Week 1).
 
-**Week 2 tasks:** (2.1) compute IDF per word, (2.2) write the full BM25 scorer in `src/ranker.py`, (2.3) tune `b` and `k1` and watch results move, (2.4) add simple stemming (so "hiking"/"hiked"/"hikes" match "hike").
+**DONE so far (all in `src/ranker.py`, tested via `build_test.py`):**
+- **2.1 IDF** — `idf(word, index, total_docs)` = `math.log(1 + (total_docs - n + 0.5)/(n + 0.5))`. Verified: trail 0.211 (common), snow 1.332, wildflower 4.467 (rare). Works.
+- **helper `avg_doc_len(doc_len)`** — mean of doc_len.values(), empty-guarded.
+- **2.2 BM25 scorer** — `bm25_search(query, index, doc_len, avg_len, total_docs, k1=1.5, b=0.75)`. Loops only docs containing each query word (inverted index), sums per-word scores, returns sorted best-first. Real query "river crossing high snow" returns genuinely relevant trails. Working.
+- **2.3 tuning** — watched `b` (0→long docs win, 1→short docs win) and `k1` (low→repetition ignored, high→repetition dominates) move the rankings. Reset to defaults k1=1.5, b=0.75.
 
-We already have what BM25 needs: the index stores per-word counts (`tf`) and `doc_len` stores document lengths. Average length = mean of `doc_len` values.
+**NEXT — 2.4 stemming:** make "hiking"/"hiked"/"hikes" all match "hike". Write a rough suffix stripper by hand (chop -ing/-ed/-s), apply it inside `tokenize` so both indexing and querying stem consistently. Don't chase linguistic perfection — rough and useful. This is the last Week 2 task before the Week 2 shippable (good ranked results on a real query).
 
-**What to deliberately NOT build:** embeddings / vector search / any AI model (nukes the "by hand" pitch), user accounts, a perfect stemmer, crawler frameworks / microservices. One Python codebase, one database.
+**What to deliberately NOT build:** embeddings/vector search/AI models (nukes the by-hand pitch), user accounts, a perfect stemmer, crawler frameworks/microservices.
+
+**Reminder for after Week 2:** the BM25 test code is currently bolted onto `build_test.py`. Week 3's FastAPI server needs the "load from DB + build index + search" path as a real function in `src/` — refactor at the Week 2→3 boundary (see section 10).
+
+---
+
+## 10. Senior engineering review (end of Week 1) — read before Week 2
+
+A critical review of the Week 1 foundation. These are risks/tech-debt items, ordered by impact. The first two should be addressed BEFORE Week 2; the rest are notes-to-self to handle when the relevant week forces them.
+
+### DO BEFORE WEEK 2
+
+**[HIGH] Corpus is temporally skewed — all ~497 reports are from one ~10-day window (late June 2026).**
+The scrape used `range(0, 500, 50)` = the 500 NEWEST reports, so nearly every URL is `trip_report-2026-06-2X`. They all describe the same season (snowmelt: high creeks, lingering snow, early bugs). This poisons BM25: IDF measures term *rarity*, but "snow in 125/497" here reflects seasonal coincidence, not meaningful rarity. Tuning `k1`/`b` against this corpus tunes against an unrepresentative distribution; it'll silently mislead in Week 2 and break when Week 4 scales to multi-season data.
+- **Fix (cheap, ~20 min):** change the scrape to sample ACROSS the feed instead of just the newest. e.g. loop `b_start` over spread-out offsets like 0, 500, 2000, 5000, 20000, 50000 (feed is ~5,600 pages / ~281k reports). Gets seasonal + geographic spread for free. Re-run scrape, re-run load_db (ON CONFLICT makes it safe).
+
+**[HIGH] No tests — verification is "run it and eyeball the terminal."**
+Fine for scraping; dangerous for Week 2, which is MATH (idf, BM25 scorer). Math bugs are silent and plausible-looking (wrong denominator, off-by-one count) — you can't catch them by eye.
+- **Fix (~30 min, do it at the START of Week 2):** 3–4 `assert` statements over a toy 3-document index where you hand-computed the right answer. No framework needed. Turns "my ranking is wrong and I'm confused" into "my test caught it in the toy case."
+
+### HANDLE WHEN THE RELEVANT WEEK FORCES IT
+
+**[MED] `build_test.py` is load-bearing throwaway code.** It holds the only working "DB → build index → search" path, but it's named "test" and lives in project root. Week 3's FastAPI server needs exactly this logic on boot. Refactor the "load docs from DB + build index" part into a real function in `src/` (e.g. `src/search.py` or a `src/loader.py`) before/when starting Week 3, so the server imports it instead of duplicating it.
+
+**[MED] `id` extraction is fragile for old-format URLs.** `report_id = url.split(".")[-1]` assumes the modern `trip_report-2026-06-30.210341804556` (dot) format. OLD reports use a DASH format (`trip_report-2020-08-01-6654865899`) — seen in the scrape, currently skipped as bad URLs. When the corpus is widened (see HIGH item above), more old-format URLs will appear; `.split(".")[-1]` returns the wrong/possibly-non-unique id → silent PRIMARY KEY collisions / mystery ON CONFLICT skips. Handle both formats (regex the trailing id, or detect dash vs dot) when broadening the scrape.
+
+### EXPLICITLY FINE TO DEFER (do NOT gold-plate these now)
+- **Raw date string with leading `— `:** defer until Week 3 date filtering actually needs it. Parsing now = speculative work.
+- **`\xa0` non-breaking spaces in body/conditions text:** the tokenizer's `[a-z0-9]+` regex already discards them at index time. Leave it.
+- **10-word stopword list:** expand only when you SEE junk words topping rankings in Week 2. Data-driven > speculative.
+- **Only 497 reports (the count):** fine for building/testing. It's the *distribution* (HIGH item) that matters, not the number. Do NOT scrape 10k yet — plan correctly saves scale for Week 4.
+
+### Review verdict
+Architecture is sound (clean scrape → cache → load → index separation; safe SQL; idempotent inserts; try/except robustness). The foundation is good. The one thing that genuinely threatens Week 2's correctness is the **corpus skew** — fix that and add a few asserts, and Week 2 stands on solid ground.
