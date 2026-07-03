@@ -7,7 +7,8 @@ def build_index(documents):     # documents = list of dicts, each with id/title/
     doc_len = {}                # doc_id -> total word count
 
     for doc in documents:
-        words = tokenize(doc["trail_name"] + " " + doc["body"])
+        cond_text = " ".join(str(v) for v in (doc.get("conditions") or {}).values())
+        words = tokenize(doc["trail_name"] + " " + doc["body"] + " " + cond_text)
         doc_len[doc["id"]] = len(words)
         for word, count in Counter(words).items():
             index[word][doc["id"]] = count

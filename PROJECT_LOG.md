@@ -6,7 +6,19 @@ Repo: https://github.com/officiallymoaizattiq-bit/trail-search
 
 ---
 
-## Status: WEEK 2 COMPLETE ✓ + devil's-advocate hardening pass done. 388 clean reports. Next: relevance measurement, then WEEK 3.
+## Status: WEEK 3 IN PROGRESS — FULL-STACK SEARCH WORKING ✓ (React → FastAPI → engine → Postgres). Next: index persistence (3.1), condition tagging (3.4), Postgres benchmark (3.5), deploy.
+
+> **Week 3 progress — the website is LIVE (locally):**
+> - **Refactor DONE.** Pulled search logic out of `build_test.py` into `src/engine.py` — a `SearchEngine` class that loads docs from Postgres, builds the index ONCE in `__init__`, exposes `search(query, limit)` returning clean dicts (trail_name, region, url, score). This is the importable module the web server needed.
+> - **Backend DONE — `main.py` (FastAPI).** `engine = SearchEngine()` at module level (builds index once on boot, reused per request). `GET /search?q=...` endpoint. Two things baked in: CORS middleware (so React on :5173 can call API on :8000), and `Query(..., min_length=1, max_length=200)` which fixes the devil's-advocate DoS/empty-query risk at the door (verified: empty query returns 422). Run with `python -m uvicorn main:app --reload` (must use `python -m` or it grabs system pyenv python, not venv → psycopg ModuleNotFoundError).
+> - **Frontend DONE — `frontend/` (React + Vite).** `frontend/src/App.jsx` = search box + button, fetches `/search`, renders results as clickable cards linking to real WTA reports. `npm run dev` serves on :5173. Uses `encodeURIComponent` on the query.
+> - **VERIFIED end-to-end:** typed "snow on the pass" in browser → ranked cards (Enchantments, Skyline Lake Snowshoe, Melakwa Lake...) each linking to the actual report. Full stack: React → HTTP → FastAPI → hand-built tokenizer/stemmer/index/BM25 → Postgres → rendered.
+>
+> **To run the whole thing (2 terminals):** (1) backend: `python -m uvicorn main:app --reload`; (2) frontend: `cd frontend && npm run dev`, open localhost:5173.
+> **gitignore updated:** added `node_modules/`, `frontend/node_modules/`, `frontend/dist/`.
+> **Debugging note:** pasting code into chat mangles indentation/eats chars (broke App.jsx twice — empty line where `<a` should be). Terminal Claude CLI can read actual bytes off disk — use it for file-level debugging instead of screenshot paste-telephone.
+
+
 
 > **Devil's-advocate review (end of Week 2) — bugs found & fixed:**
 > - **BUG: `k1` left at 5** from the tuning experiment (never reset). Fixed → `k1=1.5`. Search was running with repetition maxed out.
