@@ -1,6 +1,3 @@
-<img width="1280" height="709" alt="image" src="https://github.com/user-attachments/assets/c235f8d4-4d94-4f21-ac26-1a07517cafbb" />
-<img width="1280" height="711" alt="image" src="https://github.com/user-attachments/assets/d2da9b44-d18e-4ce4-8dff-cd235757c45a" />
-
 # Trail Report Search
 
 A search engine for hiking trip reports, **built from scratch** — the tokenizer, inverted index, and BM25 ranking are all hand-written, no search libraries. It searches real [Washington Trails Association](https://www.wta.org) trip reports by *trail condition* ("avalanche danger", "no bugs", "snow free"), not just by words in the narrative.
