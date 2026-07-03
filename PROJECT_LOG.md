@@ -6,7 +6,24 @@ Repo: https://github.com/officiallymoaizattiq-bit/trail-search
 
 ---
 
-## Status: WEEK 2 COMPLETE ✓ — BM25 ranking + stemming done. Real ranked search over 391 diverse reports. Next: WEEK 3 (website + condition tagging + deploy).
+## Status: WEEK 2 COMPLETE ✓ + devil's-advocate hardening pass done. 388 clean reports. Next: relevance measurement, then WEEK 3.
+
+> **Devil's-advocate review (end of Week 2) — bugs found & fixed:**
+> - **BUG: `k1` left at 5** from the tuning experiment (never reset). Fixed → `k1=1.5`. Search was running with repetition maxed out.
+> - **BUG: query terms not deduped.** `bm25_search` looped `tokenize(query)`, so "snow snow" double-scored "snow" (verified: 1.224 → 2.449). Fixed: `for word in set(tokenize(query))`. A query term's weight shouldn't depend on how many times the USER typed it. Re-verified: both score 1.224 now.
+> - **DATA: 3 empty-body reports deleted.** Were genuine photo-only WTA posts (metadata + condition tags filled, zero body text). Deleted via `DELETE FROM documents WHERE body IS NULL OR body=''`. Corpus now **388 clean text-bearing reports**. NOTE: `data/reports.json` still has all 391 — DB and JSON slightly out of sync; re-running load_db would re-add them. Week-3 polish: strip empties in load_db too.
+>
+> **Confirmed KNOWN DEBT (defensible, not fixing now):**
+> - Stemmer false-split: "pass"→"pas" but "passed"→"pass" — same concept, different roots, don't merge. Plan says don't chase stemmer perfection. Now nameable as a known failure mode.
+> - **Conditions field is FULLY POPULATED in DB but INVISIBLE to search.** `build_index` only tokenizes `trail_name + body`, ignores `conditions`. This is true for ALL reports, not just the deleted 3. Folding condition tags into searchable text = literally Week 3 task 3.4 (the "hiking edge"). The data is already sitting there ready.
+> - `build_test.py` still holds the only working "load DB → build index → search" path. Week 3 needs it as a real `src/` function.
+> - **No relevance measurement** — can't yet answer "how good are your results?" Closing this next (small query→expected-results harness).
+>
+> **Relevance measurement DONE (`test_relevance.py`).** Closed the "how good are results?" gap. Ran 5 varied queries (`relevance_explore.py`), eyeballed results — all genuinely good (snow query → Snowshoe trails, water query → Creek/River trails, wildflower query → eastern-WA shrub-steppe spots, bug query → lake basins). Locked 4 as a regression test: each query asserts a hand-verified sensible result lands in top-5 (loose substring match, survives minor ranking shifts, catches real breakage). **4/4 passing.** Interview answer for "how do you know it's good" is now "measured, not vibed."
+>
+> **Engine now guarded by 3 test files:** `test_sanity.py` (tokenizer/index math), `test_devil.py` (bug regressions), `test_relevance.py` (result quality). Run all three after any Week 3 change.
+
+
 
 > **Task 2.4 stemming DONE.** Added `stem(word)` to `src/tokenizer.py` — rough suffix stripper (chops -ing/-ed/-es/-s, guard: only if ≥3 chars remain). Wired into `tokenize` via `[stem(w) for w in words if w not in STOPWORDS]`, so it runs on BOTH indexing and querying automatically (that's what makes matching work — "hiking" in a report and "hike" in a query both reduce to same root). Verified: `stem("hiking")==stem("hikes")==stem("hiked")`.
 > - **Measured impact:** index 6204 → 5269 unique words (~935 variants collapsed). "wildflower" went from 4 docs (idf 4.467) to 21 docs (idf 2.903) — "wildflower"+"wildflowers" merged, 17 previously-invisible reports now match. Search relevance held (Entiat River / High Divide still top for "river crossing high snow"). This is the recall win, concretely.
