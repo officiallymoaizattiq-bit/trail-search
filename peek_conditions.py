@@ -1,8 +1,9 @@
-import psycopg
 import json
 from collections import Counter
 
-conn = psycopg.connect("dbname=trailsearch")
+from src.db import connect
+
+conn = connect()
 cur = conn.cursor()
 cur.execute("SELECT conditions FROM documents")
 rows = cur.fetchall()

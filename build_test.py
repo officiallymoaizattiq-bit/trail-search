@@ -1,11 +1,11 @@
-import psycopg
+from src.db import connect
 from src.tokenizer import tokenize
 from src.index import build_index
 from src.ranker import idf
 from src.ranker import bm25_search, avg_doc_len
 
 # pull all reports out of postgres
-conn = psycopg.connect("dbname=trailsearch")
+conn = connect()
 cur = conn.cursor()
 cur.execute("SELECT id, trail_name, body FROM documents")
 rows = cur.fetchall()

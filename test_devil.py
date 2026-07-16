@@ -2,7 +2,7 @@
 from src.tokenizer import tokenize, stem
 from src.index import build_index
 from src.ranker import bm25_search, avg_doc_len, idf
-import psycopg
+from src.db import connect
 
 print("=" * 55)
 print("BUG 2: does repeating a query word inflate its score?")
@@ -41,7 +41,7 @@ print()
 print("=" * 55)
 print("DATA INTEGRITY: db check")
 print("=" * 55)
-conn = psycopg.connect("dbname=trailsearch")
+conn = connect()
 cur = conn.cursor()
 cur.execute("SELECT COUNT(*), COUNT(DISTINCT id) FROM documents")
 total, distinct = cur.fetchone()

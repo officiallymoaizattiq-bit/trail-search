@@ -1,7 +1,7 @@
 import json
 import os
 
-import psycopg
+from src.db import connect
 from src.index import build_index
 from src.ranker import bm25_search, avg_doc_len
 
@@ -9,7 +9,7 @@ INDEX_PATH = "data/index.json"
 
 
 def load_documents():
-    conn = psycopg.connect(os.environ.get("DATABASE_URL", "dbname=trailsearch"))
+    conn = connect()
     cur = conn.cursor()
     cur.execute("SELECT id, trail_name, body, region, url, conditions FROM documents")
     rows = cur.fetchall()
@@ -22,7 +22,7 @@ def load_documents():
 
 
 def db_fingerprint():
-    conn = psycopg.connect(os.environ.get("DATABASE_URL", "dbname=trailsearch"))
+    conn = connect()
     cur = conn.cursor()
     cur.execute("SELECT COUNT(*), COALESCE(MAX(id), '') FROM documents")
     row = cur.fetchone()

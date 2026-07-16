@@ -1,14 +1,23 @@
 import os
+import sys
 import time
-import psycopg
+from src.db import connect
 from src.engine import SearchEngine
+
+# the benchmark compares the hand-built engine against Postgres full-text search,
+# so it needs a real Postgres reachable via DATABASE_URL. gate on it up front.
+if not os.environ.get("DATABASE_URL"):
+    sys.exit(
+        "benchmark.py requires Postgres for the FTS comparison.\n"
+        "Export DATABASE_URL (e.g. a local Postgres) before running this benchmark."
+    )
 
 # --- your engine ---
 print("building your engine...")
 mine = SearchEngine()
 
 # --- postgres connection for its full-text search ---
-conn = psycopg.connect(os.environ.get("DATABASE_URL", "dbname=trailsearch"))
+conn = connect()
 
 def postgres_search(query, limit=5):
     # turn "snow on the pass" into "snow & on & the & pass" for to_tsquery
