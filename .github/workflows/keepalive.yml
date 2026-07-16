@@ -1,0 +1,13 @@
+name: keepalive
+on:
+  schedule:
+    - cron: "0 12 * * *"
+  workflow_dispatch:
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - run: pip install "psycopg[binary]"
+      - run: python -c "import os,psycopg;psycopg.connect(os.environ['DATABASE_URL']).execute('SELECT 1');print('alive')"
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
